@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  VpcId:
+    Type: String
+    Description: The ID of the VPC to launch the RDS instance in.
+  DbUsername:
+    Type: String
+    Description: The username for the database.
+  DbPassword:
+    Type: String
+    Description: The password for the database.
+    NoEcho: true
+
+Resources:  
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS PostgreSQL instance
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: postgres
+      DBName: example_database
+      EngineVersion: 14.5
+      DBInstanceIdentifier: example-postgres-instance
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      AllocatedStorage: 20
+      DBInstanceClass: db.t3.micro
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      VPCSecurityGroups:
+        - !Ref SecurityGroup
+      
+
+Outputs:
+  DBInstanceIdentifier:
+    Description: The identifier of the RDS instance.
+    Value: !Ref DBInstance
+    Export:
+      Name: !Sub '${AWS::StackName}-DBInstanceIdentifier'

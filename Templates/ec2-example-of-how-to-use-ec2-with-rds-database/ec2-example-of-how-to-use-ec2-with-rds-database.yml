@@ -1,6 +1,14 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Parameters:
+  RDSDatabaseSchemaName:
+    Description: The name of the database
+    Type: String
+    Default: example_database
+  RDSInstanceEndpoint:
+    Description: The endpoint of a given RDS instance
+    Type: String
+    Default: example-postgres-instance.c4ypbbmbnnpb.us-east-1.rds.amazonaws.com
   DBUsername:
     Description: The username for the database
     Type: String
@@ -39,10 +47,18 @@ Resources:
           #!/bin/bash
           yum install -y amazon-linux-extras
           amazon-linux-extras install postgresql13
-          export DB_USERNAME=${DBUsername}
-          export DB_PASSWORD=${DBPassword}
-          echo "DB_USERNAME=${DBUsername}" > /tmp/db_credentials
-          echo "DB_PASSWORD=${DBPassword}" >> /tmp/db_credentials
+          echo "RDS_USERNAME=${DBUsername}" >> /etc/environment
+          echo "PGPASSWORD=${DBPassword}" >> /etc/environment
+          echo "RDS_ENDPOINT=${RDSInstanceEndpoint}" >> /etc/environment
+          echo "DATABASE_NAME=${RDSDatabaseSchemaName}" >> /etc/environment
+          source /etc/environment
+          echo "RDS_USERNAME=$RDS_USERNAME" >> /tmp/db_credentials
+          echo "PGPASSWORD=$PGPASSWORD" >> /tmp/db_credentials
+          echo "RDS_ENDPOINT=$RDS_ENDPOINT" >> /tmp/db_credentials
+          echo "DATABASE_NAME=$DATABASE_NAME" >> /tmp/db_credentials
+          psql "host=$RDS_ENDPOINT dbname=$DATABASE_NAME user=$RDS_USERNAME password=$PGPASSWORD" -c "CREATE TABLE example_table (id serial PRIMARY KEY, person_name VARCHAR NOT NULL, gender VARCHAR ( 10 ) NOT NULL);"
+          psql "host=$RDS_ENDPOINT dbname=$DATABASE_NAME user=$RDS_USERNAME password=$PGPASSWORD" -c "INSERT INTO  example_table (person_name,gender) VALUES ('James','Male'), ('Robert','Male'), ('John','Male'), ('Michael','Male'), ('David','Male'), ('William','Male'), ('Mary','Female'), ('Patricia','Female'), ('Jennifer','Female'), ('Linda','Female'), ('Elizabeth','Female');
+
       Tags:
       - Key: Name
         Value: AWS-EC2-Example-Exporting-Parameters
