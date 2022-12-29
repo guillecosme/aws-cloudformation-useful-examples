@@ -1,0 +1,69 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Description: The CIDR block for the VPC
+  PrivateSubnetCidr:
+    Type: String
+    Description: The CIDR block for the private subnet
+  PublicSubnetCidr:
+    Type: String
+    Description: The CIDR block for the public subnet
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnetCidr
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnetCidr
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicSubnetRouteTable
+  PublicSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+  PublicSubnetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Description: The ID of the VPC
+  PrivateSubnetId:
+    Value: !Ref PrivateSubnet
+    Description: The ID of the private subnet
+  PublicSubnetId:
+    Value: !Ref PublicSubnet
+    Description: The ID of the public subnet
