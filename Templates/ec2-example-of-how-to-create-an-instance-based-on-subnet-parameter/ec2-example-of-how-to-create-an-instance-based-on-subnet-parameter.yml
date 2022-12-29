@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  SubnetId:
+    Description: The id of the subnet that the instance will be launced.
+    Type: String
+    Default: subnet-4f04df6e
+  AMI:
+      Description: The AMI to use for the EC2 instance
+      Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+      Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-ebs
+
+Resources:
+
+  EC2Instance:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: !Ref AMI
+        IamInstanceProfile: !Ref InstanceProfile
+        InstanceType: t2.micro
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            DeviceIndex: 0
+            SubnetId: !Ref SubnetId
+        Tags:
+        - Key: Name
+          Value: AWS-EC2-Simple-Example-VPC-Stack-Parameter
+
+  SSMForEC2Role:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - ec2.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref SSMForEC2Role
+
+Outputs:
+  EC2InstanceId:
+    Value: !Ref EC2Instance
+    Description: The ID of the EC2 instance.
