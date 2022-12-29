@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  DBInstanceArn:
+    Type: String
+    Description: The ARN of the database.
+    Default: arn:aws:rds:us-east-1:692892377645:db:example-postgres-instance
+  RDSIdentifier:
+    Type: String
+    Description: The identifier of the database to be used on the proxy targetgroup.
+    Default: example-postgres-instance
+  VpcSecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: The IDs of the securitygroup IDs to launch the RDS proxy in. 
+    Default: sg-0a9843d9a68a44f55
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: The IDs of the subnets to launch the RDS proxy in. At least two.
+    Default: subnet-77aec23a, subnet-6c66865d, subnet-00f52c5f
+  DbUsername:
+    Type: String
+    Description: The username for the database.
+    Default: master
+  DbPassword:
+    Type: String
+    Description: The password for the database.
+    Default: '12345678'
+    NoEcho: false
+
+Resources:
+
+  DBRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - rds.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: example-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds-db:connect
+                Resource:
+                  - !Ref DBInstanceArn
+  DBSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: example-db-secret
+      SecretString: !Sub '{"username": "${DbUsername}", "password": "${DbPassword}"}'
+
+  MySecretResourcePolicy:
+    Type: AWS::SecretsManager::ResourcePolicy
+    Properties:
+      BlockPublicPolicy: True
+      SecretId:
+        Ref: DBSecret
+      ResourcePolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Resource: "*"
+          Action: secretsmanager:GetSecretValue
+          Effect: Allow
+          Principal:
+            AWS:
+              !GetAtt DBRole.Arn 
+          
+          
+  DBProxy:
+    Type: AWS::RDS::DBProxy
+    Properties:
+      Auth:
+        - SecretArn: !Ref DBSecret
+          IAMAuth: DISABLED
+      DBProxyName: example-db-proxy
+      DebugLogging: true
+      EngineFamily: POSTGRESQL
+      RequireTLS: true
+      RoleArn: !GetAtt [DBRole, Arn]
+      VpcSubnetIds: !Split [',', !Join [',', !Ref SubnetIds]] 
+      VpcSecurityGroupIds: !Split [',', !Join [',', !Ref VpcSecurityGroupIds]]
+      Tags:
+        - Key: Name
+          Value: example-db-proxy
+
+  ProxyTargetGroup:
+    Type: AWS::RDS::DBProxyTargetGroup
+    DependsOn: DBProxy
+    Properties:
+      DBProxyName: !Ref DBProxy
+      DBInstanceIdentifiers: 
+        - !Ref RDSIdentifier
+      TargetGroupName: default
+      ConnectionPoolConfigurationInfo:
+          MaxConnectionsPercent: 100
+          MaxIdleConnectionsPercent: 50
+          ConnectionBorrowTimeout: 180
