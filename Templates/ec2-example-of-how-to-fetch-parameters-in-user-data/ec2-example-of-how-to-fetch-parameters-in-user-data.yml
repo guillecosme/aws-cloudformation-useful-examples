@@ -1,4 +1,3 @@
----
 AWSTemplateFormatVersion: '2010-09-09'
 
 Parameters:
@@ -34,6 +33,7 @@ Resources:
     Properties:
       ImageId: !Ref AMI
       IamInstanceProfile: !Ref InstanceProfile
+      InstanceType: t2.micro
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -43,6 +43,9 @@ Resources:
           export DB_PASSWORD=${DBPassword}
           echo "DB_USERNAME=${DBUsername}" > /tmp/db_credentials
           echo "DB_PASSWORD=${DBPassword}" >> /tmp/db_credentials
+      Tags:
+      - Key: Name
+        Value: AWS-EC2-Example-Exporting-Parameters
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
