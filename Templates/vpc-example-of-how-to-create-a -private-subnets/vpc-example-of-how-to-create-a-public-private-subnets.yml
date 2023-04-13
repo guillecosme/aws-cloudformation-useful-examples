@@ -1,0 +1,31 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Description: The CIDR block for the VPC
+  PrivateSubnetCidr:
+    Type: String
+    Description: The CIDR block for the private subnet
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PrivateSubnetCidr
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Description: The ID of the VPC
+  PrivateSubnetId:
+    Value: !Ref PrivateSubnet
+    Description: The ID of the private subnet

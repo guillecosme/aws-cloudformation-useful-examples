@@ -1,16 +1,47 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Parameters:
-  SubnetId:
-    Description: The id of the subnet that the instance will be launced.
+  EC2TagName:
+    Description: Thename to place in the EC2 Intances tag
     Type: String
-    Default: subnet-4f04df6e
+  SubnetId:
+    Description: The id of the subnet that the instance will be launched.
+    Type: AWS::EC2::Subnet::Id
+  VpcId:
+    Description: The id of the vpc that the instance will be launched.
+    Type: AWS::EC2::VPC::Id
   AMI:
       Description: The AMI to use for the EC2 instance
       Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
       Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-ebs
 
 Resources:
+        
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow all ICMP and TCP traffic
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Ref EC2TagName
 
   EC2Instance:
       Type: AWS::EC2::Instance
@@ -22,9 +53,10 @@ Resources:
           - AssociatePublicIpAddress: true
             DeviceIndex: 0
             SubnetId: !Ref SubnetId
+            GroupSet: [!Ref EC2SecurityGroup]
         Tags:
         - Key: Name
-          Value: AWS-EC2-Simple-Example-VPC-Stack-Parameter
+          Value: !Ref EC2TagName
 
   SSMForEC2Role:
       Type: AWS::IAM::Role
@@ -51,3 +83,5 @@ Outputs:
   EC2InstanceId:
     Value: !Ref EC2Instance
     Description: The ID of the EC2 instance.
+
+    
